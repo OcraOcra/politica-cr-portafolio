@@ -1,4 +1,4 @@
-# Cultura Política en Costa Rica — Proyecto de Portafolio en R
+# Cultura Política en Costa Rica — Proyecto R
 
 **Autor:** Marco Artavia Pacheco  
 **Fuente principal:** LAPOP AmericasBarometer Costa Rica 2016 (vía PEN)  
