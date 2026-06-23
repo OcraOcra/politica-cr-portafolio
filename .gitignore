@@ -1,0 +1,14 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Renv/
+
+# datos crudos
+datos/raw/*.zip
+
+# output
+output/*.html
+
+# Windows
+Thumbs.db

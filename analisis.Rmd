@@ -1,0 +1,246 @@
+---
+title: "Political_INDIC"
+author: "Marco Artavia Pacheco"
+date: "2026-06-21"
+output: html_document
+toc: true
+toc_float: true
+theme: flatly
+---
+
+
+## 1. Introducción
+
+El Latin American Public Opinion Project (LAPOP) de la Universidad de Vanderbilt realiza la encuesta comparativa AmericasBarometer, la fuente más amplia de opinión pública sobre democracia y gobernanza en América Latina.El utilizado  corresponde a la ronda de Costa Rica 2016, parte del AmericasBarometer. El proyecto se realiza con un numero de observaciones al momento de filtrarse de 1430. Las preguntas que se buscan responder son las siguientes: 
+
+b6: Confianza en el gobierno nacional.
+
+b3: Confianza en la Asamblea Legislativa.
+
+b21: Confianza en los partidos políticos.
+
+b13: Confianza en el Tribunal Supremo de Elecciones (TSE).
+
+sd2new2: Satisfacción con la democracia.
+
+ed: Nivel educativo.
+
+ur: Zona urbana/rural.
+
+
+# 1.1 Librerias 
+
+```{r}
+library(haven)
+library(readxl)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(viridis)
+library(kableExtra)
+library(rmarkdown)
+library(knitr)
+library(here)
+```
+
+# 2. Datos 
+
+
+
+```{r}
+lapop <- read_csv(here("datos/raw/costarica_lapop_2016.csv"),
+                  na = c("", "NA", "-99", "-98"))
+
+indic_anuales <- read_xlsx(here("datos/raw/indicadores_regionales_anuales.xlsx"),
+                           skip = 1, na = c("", "NA"))
+
+```
+
+# 2.1 Limpieza de datos
+
+```{r}
+library(tidyverse)
+
+
+#Lapop 
+
+names(lapop)
+
+lapop_clean <- lapop %>%
+  drop_na(b6, b3, b21, b13, sd2new2, ed, ur)
+
+head(lapop_clean)
+tail(lapop_clean)
+
+
+library(janitor)
+
+indic_clean <- indic_anuales %>%
+  clean_names() %>%
+  rename(
+    codigo = x1,
+    indicador = x2
+  ) %>%
+  drop_na(codigo)
+
+indic_clean
+```
+
+
+```{r}
+names(indic_anuales)
+
+
+head(indic_clean)
+tail(indic_clean)
+```
+
+```{r}
+library(janitor)
+
+indic_clean <- indic_anuales %>%
+  clean_names() %>%
+  rename(
+    codigo = x1,
+    indicador = x2
+  ) %>%
+  drop_na(codigo)
+
+indic_clean
+```
+
+
+```{r}
+dim(indic_clean)
+```
+
+```{r}
+
+head(lapop_clean)
+tail(lapop_clean)
+
+head(indic_clean)
+tail(indic_clean)
+```
+
+
+# 3. Analisis descriptivo 
+
+# 3.1 Confianza en el gobierno
+
+```{r}
+summary(lapop_clean %>% select(b6, b3, b21, b13, sd2new2, ed, q1))
+
+ggplot(lapop_clean, aes(x = b6)) +
+  geom_histogram(binwidth = 1, fill = "#2c3e50", color = "white") +
+  scale_x_continuous(breaks = 1:7) +
+  labs(title = "Confianza en el Gobierno",
+       x = "Nivel de confianza (1 = ninguna, 7 = mucha)",
+       y = "Frecuencia") +
+  theme_minimal()
+
+
+```
+
+#### Hallazgo inicial: Se observa que unicamente el 49% de los encuestados reporta alta confianza (6-7)
+
+# 3.2 Confianza por zona
+
+```{r}
+lapop_clean %>%
+  mutate(ur = factor(ur, labels = c("Urbana", "Rural"))) %>%
+  ggplot(aes(x = ur, y = b6, fill = ur)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_viridis(discrete = TRUE, begin = 0.3, end = 0.7) +
+  labs(title = "Confianza en el gobierno por zona",
+       x = NULL, y = "Confianza (1-7)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+#interpretacion numerica 
+
+lapop_clean %>%
+  mutate(ur = factor(ur, labels = c("Urbana", "Rural"))) %>%
+  group_by(ur) %>%
+  summarise(media = mean(b6, na.rm = TRUE),
+            mediana = median(b6, na.rm = TRUE))
+
+#No se observa una diferencia significativa entre lo rural y lo urbano
+
+
+```
+
+
+
+# 3.3 Confianza por educación:
+
+```{r}
+lapop_clean %>%
+  mutate(ed_group = case_when(
+    ed <= 6 ~ "Primaria o menos",
+    ed <= 11 ~ "Secundaria",
+    ed >= 12 ~ "Universitaria"
+  )) %>%
+  group_by(ed_group) %>%
+  summarise(media_b6 = mean(b6, na.rm = TRUE),
+            media_b21 = mean(b21, na.rm = TRUE),
+            n = n()) %>%
+  drop_na(ed_group)
+
+
+
+```
+
+##### La confianza en partidos políticos es consistentemente baja en todos los niveles educativos (medias entre 2.9 y 3.2), pero quienes tienen educación primaria reportan valores ligeramente superiores. En cambio, la confianza en el gobierno muestra una relación en forma de U: los grupos con secundaria son los más críticos."
+
+3.4 Tabla Resumen
+
+```{r}
+
+library(kableExtra)
+
+lapop_clean %>%
+  summarise(across(c(b6, b3, b21, b13, sd2new2),
+                   list(Media = ~ mean(.x, na.rm = TRUE) %>% round(2),
+                        DE = ~ sd(.x, na.rm = TRUE) %>% round(2)))) %>%
+  pivot_longer(everything(), names_sep = "_", names_to = c("Institucion", ".value")) %>%
+  kbl(caption = "Confianza institucional en Costa Rica, 2016") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+```{r}
+lapop_clean %>%
+  summarise(across(c(b6, b3, b21, b13, sd2new2),
+                   list(Media = ~ mean(.x, na.rm = TRUE) %>% round(2),
+                        DE = ~ sd(.x, na.rm = TRUE) %>% round(2)))) %>%
+  pivot_longer(everything(), names_sep = "_", names_to = c("Institución", ".value")) %>%
+  mutate(Institución = recode(Institución,
+    b6 = "Gobierno Nacional",
+    b3 = "Asamblea Legislativa",
+    b21 = "Partidos Políticos",
+    b13 = "TSE",
+    sd2new2 = "Satisfacción con democracia"
+  )) %>%
+  kbl(caption = "Confianza institucional en Costa Rica, 2016") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+
+# **Conclusiones**
+
+
+1. **Los partidos políticos son la institución con menor confianza** (3.0/7), un hallazgo consistente con la crisis de representación partidaria en Costa Rica durante la última década.
+
+2. **El gobierno gozaba de una alta confianza en 6/7** (5.2/7), con casi la mitad de la población (49%) ubicándose en los niveles más altos de la escala.
+
+3. **No existe una brecha urbano-rural significativa** en la confianza al gobierno (5.1 vs 5.2), lo que sugiere que la valoración del Ejecutivo es transversal.
+
+4. **La educación muestra una relación no lineal con la confianza**: los grupos con secundaria son los más críticos, mientras que primaria y universitaria muestran valores más altos. Esto sugiere que el cuestionamiento político no se concentra en los menos educados, sino en sectores medios.
+
+5. **La confianza en partidos políticos baja conforme aumenta la educación**, pasando de 3.2 (primaria) a 2.9 (universitaria). El desencanto partidario es más agudo entre los sectores con mayor capital educativo.
+")
+
+
+
